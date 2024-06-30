@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Results</title>
+
+    <style>
+        /* Style for the container */
+        .container {
+            margin: auto;
+            width: 80%;
+            padding: 20px;
+            background-color: #f2f2f2;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        /* Style for the uploaded image */
+        .uploaded-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: auto;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style for the OCR text */
+        .ocr-text {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Style for the upload button */
+        .upload-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .upload-button:hover {
+            background-color: #45a049;
+        }
+
+        /* Style for the blue box */
+        .blue-box {
+            background-color: #007bff; /* Blue color */
+            color: white; /* White text color */
+            padding: 20px; /* Add some padding */
+            border-radius: 10px; /* Rounded corners */
+        }
+
+        /* Style for the bounding boxes */
+        .bounding-box {
+            position: absolute;
+            border: 2px solid red;
+            pointer-events: none; /* Make bounding boxes non-clickable */
+        }
+
+        /* Style for the bounding box labels */
+        .bounding-box-label {
+            position: absolute;
+            background-color: white;
+            color: black;
+            padding: 5px;
+            font-size: 14px;
+            border-radius: 5px;
+            pointer-events: none; /* Make labels non-clickable */
+        }
+
+        /* Style for the bounding box container */
+        #bounding-boxes {
+            position: relative;
+            margin-top: 20px;
+        }
+
+        #bounding-boxes h2 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Upload Image for OCR</h1>
+        <form id="upload-form" enctype="multipart/form-data" action="/process_image" method="POST">
+            <input type="file" id="image-input" accept="image/*">
+            <button type="submit" class="upload-button">Upload</button>
+        </form>
+        <div id="image-preview-container">
+            <h2>Uploaded Image Preview</h2>
+            <img id="image-preview" class="uploaded-image" src="#" alt="Uploaded Image">
+        </div>
+        <div id="ocr-output" class="blue-box">
+            <h2>OCR Output</h2>
+            <p id="ocr-text" class="ocr-text">OCR Text: </p>
+        </div>
+        <div id="bounding-boxes">
+            <h2>Bounding Boxes and Labels</h2>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('upload-form');
+            const imageInput = document.getElementById('image-input');
+            const imagePreview = document.getElementById('image-preview');
+            const ocrText = document.getElementById('ocr-text');
+            const boundingBoxes = document.getElementById('bounding-boxes');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault(); // Prevent default form submission behavior
+                console.log('Form submitted'); // Log a message to check if the form is submitted
+                const formData = new FormData();
+                formData.append('image', imageInput.files[0]);
+                
+                try {
+                    const response = await fetch('/process_image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    displayOCR(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            function displayOCR(data) {
+    const { image_url, ocr_text, readable_boxes } = data;
+    imagePreview.src = image_url;
+    ocrText.textContent = 'OCR Text: ' + ocr_text.join(', ');
+
+    // Get the dimensions of the uploaded image
+    const imageWidth = document.getElementById('image-preview').clientWidth;
+    const imageHeight = document.getElementById('image-preview').clientHeight;
+
+    const boundingBoxes = document.getElementById('bounding-boxes');
+    boundingBoxes.innerHTML = ''; // Clear any existing bounding boxes and labels
+
+    readable_boxes.forEach(box => {
+        const div = document.createElement('div');
+        div.className = 'bounding-box';
+
+        // Adjust coordinates based on image dimensions (assuming no resizing on server)
+        const scaleX = imageWidth / data.image_width; // Assuming data.image_width
+        const scaleY = imageHeight / data.image_height; // Assuming data.image_height
+        div.style.left = box.x1 * scaleX + 'px';
+        div.style.top = box.y1 * scaleY + 'px';
+        div.style.width = (box.x2 - box.x1) * scaleX + 'px';
+        div.style.height = (box.y2 - box.y1) * scaleY + 'px';
+        boundingBoxes.appendChild(div);
+
+        const label = document.createElement('div');
+        label.className = 'bounding-box-label';
+        label.style.left = box.x1 * scaleX + 'px';
+        label.style.top = (box.y2 * scaleY) + 5 + 'px'; // Add a vertical offset for label
+        label.textContent = box.text;
+        boundingBoxes.appendChild(label);
+    });
+}
+            }
+        );
+    </script>
+    </body>
+    </html>
+

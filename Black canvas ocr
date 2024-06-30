@@ -1,0 +1,40 @@
+import pytesseract
+import cv2
+import numpy as np
+
+pytesseract.pytesseract.tesseract_cmd = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+config = 'digits'
+
+# Load the image
+image = cv2.imread("Pictures/Capture1.png")
+if image is None:
+    print("Error: Unable to load the image")
+else:
+    img_RGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Perform OCR to get the results
+    results = pytesseract.image_to_data(img_RGB, output_type=pytesseract.Output.DICT)
+
+    # Initialize a black canvas with the same size as the original image
+    canvas = np.zeros_like(image)
+
+    # Draw bounding boxes around the detected text regions and place the recognized text on top of each word
+    for i in range(len(results['text'])):
+        x, y, w, h = results['left'][i], results['top'][i], results['width'][i], results['height'][i]
+        text = results['text'][i]
+
+        if text != "":
+            # Crop out the detected text region from the original image
+            text_region = image[y:y+h, x:x+w]
+
+            # Place the cropped text region onto the canvas
+            canvas[y:y+h, x:x+w] = text_region
+
+            # Draw bounding box and recognized text on the canvas
+            cv2.rectangle(canvas, (x, y), (x + w, y + h), (255, 255, 255), 2)
+            cv2.putText(canvas, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+    # Display the result
+    cv2.imshow("Detected Text Regions", canvas)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
